@@ -18,3 +18,13 @@ Where the `-i` argument is the URL to the OWA landing page (do not include the `
 
 
 The discovered emails will be printed on screen, and also written to a file called `global_address_list.txt`. You can specify an alternate output file name with the `-o` argument.
+
+## SSL
+
+If SSL error is thrown (i.e. `[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate (_ssl.c:1006)`), you can use `-k` to continue despite the cert verification failing.
+
+Ask yourself whether this is a good idea before you do it.
+
+```sh
+python emailextract.py -i webmail.example.com -u username -p password -k
+```
