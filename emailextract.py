@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Extraction of the Global Address List (GAL) on Exchange >=2013 servers via Outlook Web Access (OWA) 
 # By Pigeonburger, June 2021
 # https://github.com/pigeonburger
@@ -15,6 +16,8 @@ parser.add_argument("-p", "--password", dest="password",
                   help="A password to log in", metavar="PASSWORD", type=str, required=True)
 parser.add_argument("-o", "--output-file", dest="output",
                   help="Specify file to output emails to (default is global_address_list.txt)", metavar="OUTPUT FILE", type=str, default="global_address_list.txt")
+parser.add_argument("-k", "--ignore-cert", dest="ignore_cert",
+                  help="Ignore SSL certificate verification", action="store_true", default=False)
 
 args = parser.parse_args()
 
@@ -22,6 +25,7 @@ url = args.hostname
 USERNAME = args.username
 PASSWORD = args.password
 OUTPUT = args.output
+VERIFY = True if not args.ignore_cert else False
 
 
 # Start the session
@@ -32,10 +36,10 @@ print("Connecting to %s/owa" % url)
 # Get OWA landing page
 # Add https:// scheme if not already added in the --host arg
 try:
-    s.get(url+"/owa")
+    s.get(url+"/owa", verify=VERIFY)
     URL = url
 except requests.exceptions.MissingSchema:
-    s.get("https://"+url+"/owa")
+    s.get("https://"+url+"/owa", verify=VERIFY)
     URL = "https://"+url
 
 
@@ -47,7 +51,7 @@ FIND_PEOPLE_URL = URL + "/owa/service.svc?action=FindPeople"
 
 # Attempt a login to OWA
 login_data={"username":USERNAME, "password":PASSWORD, 'destination': URL, 'flags': '4', 'forcedownlevel': '0'}
-r = s.post(AUTH_URL, data=login_data, headers={'user-agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0"})
+r = s.post(AUTH_URL, data=login_data, verify=VERIFY, headers={'user-agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0"})
 
 
 # The Canary is a unique ID thing provided upon a successful login that's also required in the header for the next few requests to be successful.
@@ -60,7 +64,7 @@ print("\nLogin Successful!\nCanary key:", session_canary)
 
 
 # Returns an object containing the IDs of all accessible address lists, so we can specify one in the FindPeople request
-r = s.post(PEOPLE_FILTERS_URL, headers={'Content-type': 'application/json', 'X-OWA-CANARY': session_canary, 'Action': 'GetPeopleFilters'}, data={}).json()
+r = s.post(PEOPLE_FILTERS_URL, verify=VERIFY, headers={'Content-type': 'application/json', 'X-OWA-CANARY': session_canary, 'Action': 'GetPeopleFilters'}, data={}).json()
 
 
 # Find the Global Address List id
@@ -119,7 +123,7 @@ peopledata = {
 
 
 # Make da request.
-r = s.post(FIND_PEOPLE_URL, headers={'Content-type': 'application/json', 'X-OWA-CANARY': session_canary, 'Action': 'FindPeople'}, data=json.dumps(peopledata)).json()
+r = s.post(FIND_PEOPLE_URL, verify=VERIFY, headers={'Content-type': 'application/json', 'X-OWA-CANARY': session_canary, 'Action': 'FindPeople'}, data=json.dumps(peopledata)).json()
 
 
 # Parse out the emails, print them and append them to a file.
